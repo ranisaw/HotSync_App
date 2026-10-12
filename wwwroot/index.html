@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fennex Customer Hub | Offshore Fleet & Operations Manager</title>
+    <meta name="description" content="Production CRUD portal for Fennex customer data synced from SharePoint into Azure SQL Database.">
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Top Navigation -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="brand-badge">
+                    <div class="brand-icon">
+                        <i class="fa-solid fa-oil-well"></i>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">FENNEX</span>
+                        <span class="brand-subtitle">HOTSYNC CUSTOMER HUB</span>
+                    </div>
+                </div>
+                <div class="env-tag">
+                    <span class="pulse-dot"></span>
+                    <span id="connectionStatusText">Live API Mode</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button id="toggleDemoModeBtn" class="btn btn-ghost" title="Toggle sample data preview if Azure SQL connection is restricted">
+                    <i class="fa-solid fa-database"></i>
+                    <span id="demoModeBtnText">Demo Mode: Off</span>
+                </button>
+                <a href="/swagger" target="_blank" class="btn btn-secondary">
+                    <i class="fa-solid fa-code"></i>
+                    <span>Swagger API</span>
+                </a>
+                <button id="refreshDataBtn" class="btn btn-secondary" title="Reload from Azure SQL">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span>Refresh</span>
+                </button>
+                <div class="export-dropdown-wrapper">
+                    <button id="exportExcelBtn" class="btn btn-secondary btn-export" title="Task 7: Export to Excel (.xlsx) using OpenXML">
+                        <i class="fa-solid fa-file-excel" style="color: #10b981;"></i>
+                        <span>Export Excel</span>
+                    </button>
+                    <button id="exportWordBtn" class="btn btn-secondary btn-export" title="Task 8: Export to Word (.docx) using OpenXML">
+                        <i class="fa-solid fa-file-word" style="color: #38bdf8;"></i>
+                        <span>Export Word</span>
+                    </button>
+                </div>
+                <button id="openCreateModalBtn" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Add Customer</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- System Alert Banner (Conditional) -->
+        <div id="systemAlertBanner" class="alert-banner hidden">
+            <div class="alert-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="alert-content">
+                <h4 id="alertTitle">Azure SQL Connection Notice</h4>
+                <p id="alertMessage">Unable to reach Azure SQL. Ensure your current client IP is allowed in Azure SQL Server Firewall rules.</p>
+            </div>
+            <div class="alert-actions">
+                <button id="enableDemoDataAlertBtn" class="btn btn-sm btn-outline-warning">
+                    <i class="fa-solid fa-eye"></i> Load Sample Data
+                </button>
+                <button id="dismissAlertBtn" class="btn-close-alert" aria-label="Close alert">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Container -->
+        <main class="main-content">
+            <!-- Key Metrics / Statistics Section -->
+            <section class="metrics-grid">
+                <div class="metric-card glass-panel">
+                    <div class="metric-icon-wrap icon-blue">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div class="metric-data">
+                        <span class="metric-label">Total Customers</span>
+                        <h3 class="metric-value" id="statTotalCustomers">0</h3>
+                        <span class="metric-subtext"><i class="fa-solid fa-check"></i> Active enterprise accounts</span>
+                    </div>
+                </div>
+
+                <div class="metric-card glass-panel">
+                    <div class="metric-icon-wrap icon-cyan">
+                        <i class="fa-solid fa-tower-broadcast"></i>
+                    </div>
+                    <div class="metric-data">
+                        <span class="metric-label">Total Oil Rigs</span>
+                        <h3 class="metric-value" id="statTotalRigs">0</h3>
+                        <span class="metric-subtext"><i class="fa-solid fa-industry"></i> Offshore operational rigs</span>
+                    </div>
+                </div>
+
+                <div class="metric-card glass-panel">
+                    <div class="metric-icon-wrap icon-amber">
+                        <i class="fa-solid fa-anchor"></i>
+                    </div>
+                    <div class="metric-data">
+                        <span class="metric-label">Jack-Up Units</span>
+                        <h3 class="metric-value" id="statTotalJackUps">0</h3>
+                        <span class="metric-subtext"><i class="fa-solid fa-layer-group"></i> Mobile platforms</span>
+                    </div>
+                </div>
+
+                <div class="metric-card glass-panel">
+                    <div class="metric-icon-wrap icon-purple">
+                        <i class="fa-solid fa-ship"></i>
+                    </div>
+                    <div class="metric-data">
+                        <span class="metric-label">MODU Vessels</span>
+                        <h3 class="metric-value" id="statTotalModus">0</h3>
+                        <span class="metric-subtext"><i class="fa-solid fa-water"></i> Mobile Offshore Drilling</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Search, Filter & View Controls -->
+            <section class="toolbar-section glass-panel">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name, address, SharePoint ID, or site URL..." autocomplete="off">
+                    <button id="clearSearchBtn" class="clear-search hidden" title="Clear search">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="toolbar-filters">
+                    <div class="filter-group">
+                        <label for="filterAssetType"><i class="fa-solid fa-filter"></i> Assets:</label>
+                        <select id="filterAssetType" class="custom-select">
+                            <option value="all">All Fleets</option>
+                            <option value="has-rigs">Has Oil Rigs (> 0)</option>
+                            <option value="has-jackups">Has Jack-Ups (> 0)</option>
+                            <option value="has-modus">Has MODUs (> 0)</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="sortBySelect"><i class="fa-solid fa-arrow-down-short-wide"></i> Sort:</label>
+                        <select id="sortBySelect" class="custom-select">
+                            <option value="id-asc">SQL Id (Ascending)</option>
+                            <option value="id-desc">SQL Id (Descending)</option>
+                            <option value="name-asc">Name (A → Z)</option>
+                            <option value="name-desc">Name (Z → A)</option>
+                            <option value="rigs-desc">Most Rigs First</option>
+                            <option value="recent-sync">Recently Synced</option>
+                        </select>
+                    </div>
+
+                    <div class="view-toggle">
+                        <button id="tableViewBtn" class="view-btn active" title="Table View">
+                            <i class="fa-solid fa-table-list"></i>
+                        </button>
+                        <button id="cardsViewBtn" class="view-btn" title="Grid Cards View">
+                            <i class="fa-solid fa-border-all"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Records Counter and Active Filters Bar -->
+            <div class="records-meta">
+                <span id="recordsCountText">Showing 0 customers</span>
+                <span id="dataTimestamp" class="timestamp-text">Last checked: Just now</span>
+            </div>
+
+            <!-- Loading Spinner State -->
+            <div id="loadingState" class="state-container glass-panel hidden">
+                <div class="spinner"></div>
+                <h3>Querying Azure SQL Database...</h3>
+                <p>Retrieving customer records via ADO.NET CustomerRepository</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="state-container glass-panel hidden">
+                <div class="state-icon">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i>
+                </div>
+                <h3>No Customers Found</h3>
+                <p id="emptyStateMessage">No customer records match your filter criteria or the database is empty.</p>
+                <button id="emptyAddBtn" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i> Add New Customer
+                </button>
+            </div>
+
+            <!-- Table View Container -->
+            <div id="tableViewContainer" class="table-card glass-panel">
+                <div class="table-responsive">
+                    <table class="custom-table" id="customersTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 70px;">ID</th>
+                                <th style="width: 110px;">SP ID</th>
+                                <th>Customer / Company</th>
+                                <th>Location & Sites</th>
+                                <th style="text-align: center;">Fleet Breakdown</th>
+                                <th>SharePoint Modified</th>
+                                <th>Synced At</th>
+                                <th style="width: 140px; text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersTableBody">
+                            <!-- Injected by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cards View Container -->
+            <div id="cardsViewContainer" class="cards-grid hidden">
+                <!-- Injected by JavaScript -->
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span><strong>Fennex Task 5</strong> &bull; .NET 10 Web API + ADO.NET Customer Repository</span>
+                <span>Direct Azure SQL Integration: <code>dbo.Customers</code></span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- MODAL: Add / Create Customer -->
+    <div id="createModal" class="modal-overlay hidden">
+        <div class="modal-card glass-modal">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <i class="fa-solid fa-building-circle-arrow-right"></i>
+                    <div>
+                        <h3>Create New Customer</h3>
+                        <p>Insert a new customer record directly into Azure SQL</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" data-close="createModal">&times;</button>
+            </div>
+
+            <form id="createCustomerForm" novalidate>
+                <div class="modal-body">
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="createSharePointId">SharePoint List ID <span class="required">*</span></label>
+                            <input type="number" id="createSharePointId" name="sharePointId" placeholder="e.g. 101" required min="1">
+                            <span class="field-error" id="error_createSharePointId"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="createName">Company / Customer Name <span class="required">*</span></label>
+                            <input type="text" id="createName" name="name" placeholder="e.g. TotalEnergies E&P" required maxlength="255">
+                            <span class="field-error" id="error_createName"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="createAddress">Headquarters Address</label>
+                        <input type="text" id="createAddress" name="address" placeholder="e.g. 2 Place Jean Millier, La Défense, Paris" maxlength="1000">
+                    </div>
+
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-sliders"></i> Fleet & Rig Inventory
+                    </div>
+
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label for="createNumberOfRigs">Oil Rigs</label>
+                            <input type="number" id="createNumberOfRigs" name="numberOfRigs" placeholder="0" min="0" value="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="createNumberOfJackUps">Jack-Up Units</label>
+                            <input type="number" id="createNumberOfJackUps" name="numberOfJackUps" placeholder="0" min="0" value="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="createNumberOfModus">MODU Vessels</label>
+                            <input type="number" id="createNumberOfModus" name="numberOfModus" placeholder="0" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-link"></i> SharePoint & Metadata
+                    </div>
+
+                    <div class="form-group">
+                        <label for="createSiteUrls">Site URLs (comma-separated)</label>
+                        <input type="text" id="createSiteUrls" name="siteUrls" placeholder="e.g. https://total.sharepoint.com/sites/drilling, https://ops.total.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="createSpLastModified">SharePoint Last Modified Timestamp</label>
+                        <input type="datetime-local" id="createSpLastModified" name="spLastModified">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close="createModal">Cancel</button>
+                    <button type="submit" id="submitCreateBtn" class="btn btn-primary">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Save Customer</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Edit Customer -->
+    <div id="editModal" class="modal-overlay hidden">
+        <div class="modal-card glass-modal">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <div>
+                        <h3>Edit Customer</h3>
+                        <p id="editModalSubtitle">Updating customer record in Azure SQL</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" data-close="editModal">&times;</button>
+            </div>
+
+            <form id="editCustomerForm" novalidate>
+                <input type="hidden" id="editCustomerId" name="id">
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="editName">Company / Customer Name <span class="required">*</span></label>
+                        <input type="text" id="editName" name="name" required maxlength="255">
+                        <span class="field-error" id="error_editName"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editAddress">Headquarters Address</label>
+                        <input type="text" id="editAddress" name="address" maxlength="1000">
+                    </div>
+
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-sliders"></i> Fleet & Rig Inventory
+                    </div>
+
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label for="editNumberOfRigs">Oil Rigs</label>
+                            <input type="number" id="editNumberOfRigs" name="numberOfRigs" min="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editNumberOfJackUps">Jack-Up Units</label>
+                            <input type="number" id="editNumberOfJackUps" name="numberOfJackUps" min="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editNumberOfModus">MODU Vessels</label>
+                            <input type="number" id="editNumberOfModus" name="numberOfModus" min="0">
+                        </div>
+                    </div>
+
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-link"></i> SharePoint & Metadata
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editSiteUrls">Site URLs (comma-separated)</label>
+                        <input type="text" id="editSiteUrls" name="siteUrls">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editSpLastModified">SharePoint Last Modified Timestamp</label>
+                        <input type="datetime-local" id="editSpLastModified" name="spLastModified">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close="editModal">Cancel</button>
+                    <button type="submit" id="submitEditBtn" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Update Customer</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: View Details -->
+    <div id="detailsModal" class="modal-overlay hidden">
+        <div class="modal-card glass-modal details-card">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div>
+                        <h3 id="detailsCustomerName">Customer Details</h3>
+                        <p id="detailsCustomerSubtitle">Full record view from dbo.Customers table</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" data-close="detailsModal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="details-grid" id="detailsContent">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-close="detailsModal">Close</button>
+                <button type="button" id="detailsExportWordBtn" class="btn btn-secondary" title="Export this customer profile to Word (.docx)">
+                    <i class="fa-solid fa-file-word" style="color: #38bdf8;"></i> Export Word (.docx)
+                </button>
+                <button type="button" id="detailsEditBtn" class="btn btn-primary">
+                    <i class="fa-solid fa-pen-to-square"></i> Edit Customer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Confirm Delete -->
+    <div id="deleteModal" class="modal-overlay hidden">
+        <div class="modal-card glass-modal delete-modal-card">
+            <div class="modal-header delete-header">
+                <div class="modal-title-wrap">
+                    <div class="danger-icon-badge">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div>
+                        <h3>Delete Customer</h3>
+                        <p>Confirm permanent deletion from Azure SQL database</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" data-close="deleteModal">&times;</button>
+            </div>
+
+            <div class="modal-body delete-body">
+                <p>Are you sure you want to delete customer <strong id="deleteCustomerName">Customer Name</strong> (ID: <span id="deleteCustomerId"></span>)?</p>
+                <div class="warning-callout">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>This executes a <code>DELETE FROM dbo.Customers WHERE Id = @Id</code> query. This action cannot be undone.</span>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-close="deleteModal">Cancel</button>
+                <button type="button" id="confirmDeleteBtn" class="btn btn-danger">
+                    <i class="fa-solid fa-trash"></i>
+                    <span>Delete Permanently</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

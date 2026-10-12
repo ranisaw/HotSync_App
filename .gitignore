@@ -1,0 +1,25 @@
+## .NET Build artifacts
+bin/
+obj/
+
+## Secret & Local Configurations (Keeps actual database credentials local)
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+!appsettings.Development.json
+.env
+
+## Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Rider / JetBrains
+.idea/
+
+## OS Files
+.DS_Store
+Thumbs.db
